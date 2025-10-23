@@ -4,7 +4,7 @@ import Header from './components/Header';
 import ProductForm from './components/ProductForm';
 import InventoryTable from './components/InventoryTable';
 import Reports from './components/Reports';
-import LoginForm from './components/LoginForm';
+import Login from './components/Login';
 import DataService from './services/DataService';
 import AuthService from './services/AuthService';
 import ShoppingList from './components/ShoppingList';
@@ -86,7 +86,7 @@ export default function App() {
           path="/reportes"
           element={isAuthenticated ? <Reports /> : <Navigate to="/login" />}
         />
-        <Route path="/login" element={<LoginForm onLoginSuccess={handleLogin} />} />
+        <Route path="/login" element={<Login onLogin={handleLogin} />} />
         <Route path='/compras' element={<ShoppingList />} />
         <Route path='/logs' element={<Logs />} />
       </Routes>

@@ -1,5 +1,5 @@
-import LoginForm from "../components/LoginForm";
+import Login from "../components/Login";
 
 export default function LoginPage({ onLogin }) {
-  return <LoginForm onLoginSuccess={onLogin} />;
+  return <Login onLogin={onLogin} />;
 }
