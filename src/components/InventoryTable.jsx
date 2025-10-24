@@ -1,9 +1,12 @@
 import React, { useState } from "react";
 import * as XLSX from "xlsx";
+import EditProductModal from "./EditProductModal"; // ← Importar el modal
 
-export default function InventoryTable({ inventario, onConsume, onDelete, onReabastecer }) {
+export default function InventoryTable({ inventario, onConsume, onDelete, onReabastecer, onEdit }) {
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
   const [busqueda, setBusqueda] = useState("");
+  const [productoEditando, setProductoEditando] = useState(null);
+  const [indexEditando, setIndexEditando] = useState(null);
 
   const categorias = ["Todos", "Alimentos", "Bebidas", "Limpieza", "Otros"];
 
@@ -14,12 +17,30 @@ export default function InventoryTable({ inventario, onConsume, onDelete, onReab
     return coincideCategoria && coincideNombre;
   });
 
-  // ✅ Función para exportar a Excel
   const exportarExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(inventarioFiltrado);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
     XLSX.writeFile(workbook, `inventario_${new Date().toLocaleDateString()}.xlsx`);
+  };
+
+  // ✅ Función para abrir el modal de edición
+  const handleEditClick = (producto, index) => {
+    setProductoEditando(producto);
+    setIndexEditando(index);
+  };
+
+  // ✅ Función para guardar los cambios
+  const handleSaveEdit = (datosActualizados) => {
+    onEdit(indexEditando, datosActualizados);
+    setProductoEditando(null);
+    setIndexEditando(null);
+  };
+
+  // ✅ Función para cerrar el modal
+  const handleCloseModal = () => {
+    setProductoEditando(null);
+    setIndexEditando(null);
   };
 
   return (
@@ -47,7 +68,6 @@ export default function InventoryTable({ inventario, onConsume, onDelete, onReab
           ))}
         </select>
 
-        {/* ✅ Botón de exportación a Excel */}
         <button className="btn btn-success" onClick={exportarExcel}>
           📊 Exportar a Excel
         </button>
@@ -73,7 +93,7 @@ export default function InventoryTable({ inventario, onConsume, onDelete, onReab
                 <td>{producto.cantidad}</td>
                 <td>{producto.categoria}</td>
                 <td>
-                  <div className="d-flex gap-2 justify-content-center">
+                  <div className="d-flex gap-2 justify-content-center flex-wrap">
                     <button
                       className="btn btn-sm btn-warning"
                       onClick={() => onConsume(index)}
@@ -85,6 +105,13 @@ export default function InventoryTable({ inventario, onConsume, onDelete, onReab
                       onClick={() => onReabastecer(index)}
                     >
                       +1
+                    </button>
+                    {/* ✅ Botón de Editar */}
+                    <button
+                      className="btn btn-sm btn-primary"
+                      onClick={() => handleEditClick(producto, index)}
+                    >
+                      ✏️ Editar
                     </button>
                     <button
                       className="btn btn-sm btn-danger"
@@ -105,6 +132,15 @@ export default function InventoryTable({ inventario, onConsume, onDelete, onReab
           )}
         </tbody>
       </table>
+
+      {/* ✅ Modal de edición */}
+      {productoEditando && (
+        <EditProductModal
+          producto={productoEditando}
+          onSave={handleSaveEdit}
+          onClose={handleCloseModal}
+        />
+      )}
     </div>
   );
 }

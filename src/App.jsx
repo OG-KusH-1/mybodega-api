@@ -47,6 +47,14 @@ export default function App() {
     setInventario(DataService.loadInventario());
   }
 
+  // ✅ Agregar esta función
+  function handleEdit(index, datosActualizados) {
+    const nuevoInventario = [...inventario];
+    nuevoInventario[index] = datosActualizados;
+    setInventario(nuevoInventario);
+    localStorage.setItem("inventario", JSON.stringify(nuevoInventario));
+  }
+
   function handleLogin() {
     setIsAuthenticated(true);
   }
@@ -75,6 +83,7 @@ export default function App() {
                       onConsume={handleConsume}
                       onDelete={handleDelete}
                       onReabastecer={handleReabastecer}
+                      onEdit={handleEdit} // ✅ Agregar esta prop
                     />
                   </div>
                 </div>
@@ -90,7 +99,7 @@ export default function App() {
           element={isAuthenticated ? <Reports /> : <Navigate to="/login" />}
         />
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
-        <Route path="/register" element={<Register />} /> {/* ✅ Agregar esta línea */}
+        <Route path="/register" element={<Register />} />
         <Route path='/compras' element={<ShoppingList />} />
         <Route path='/logs' element={<Logs />} />
       </Routes>
