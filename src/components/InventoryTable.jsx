@@ -1,47 +1,22 @@
-import React, { useState } from "react";
-import * as XLSX from "xlsx";
-import EditProductModal from "./EditProductModal"; // ← Importar el modal
+import React, { useState, useEffect } from "react";
 
 export default function InventoryTable({ inventario, onConsume, onDelete, onReabastecer, onEdit }) {
   const [categoriaFiltro, setCategoriaFiltro] = useState("Todos");
   const [busqueda, setBusqueda] = useState("");
-  const [productoEditando, setProductoEditando] = useState(null);
-  const [indexEditando, setIndexEditando] = useState(null);
+  const [inventarioFiltrado, setInventarioFiltrado] = useState([]);
 
   const categorias = ["Todos", "Alimentos", "Bebidas", "Limpieza", "Otros"];
 
-  const inventarioFiltrado = inventario.filter((p) => {
-    const coincideCategoria =
-      categoriaFiltro === "Todos" || p.categoria === categoriaFiltro;
-    const coincideNombre = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
-    return coincideCategoria && coincideNombre;
-  });
+  // 🔄 Filtrar inventario cada vez que cambian inventario, búsqueda o categoría
+  useEffect(() => {
+    const filtrado = inventario.filter((p) => {
+      const coincideCategoria = categoriaFiltro === "Todos" || p.categoria === categoriaFiltro;
+      const coincideNombre = p.nombre.toLowerCase().includes(busqueda.toLowerCase());
+      return coincideCategoria && coincideNombre;
+    });
+    setInventarioFiltrado(filtrado);
+  }, [inventario, categoriaFiltro, busqueda]);
 
-  const exportarExcel = () => {
-    const worksheet = XLSX.utils.json_to_sheet(inventarioFiltrado);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Inventario");
-    XLSX.writeFile(workbook, `inventario_${new Date().toLocaleDateString()}.xlsx`);
-  };
-
-  // ✅ Función para abrir el modal de edición
-  const handleEditClick = (producto, index) => {
-    setProductoEditando(producto);
-    setIndexEditando(index);
-  };
-
-  // ✅ Función para guardar los cambios
-  const handleSaveEdit = (datosActualizados) => {
-    onEdit(indexEditando, datosActualizados);
-    setProductoEditando(null);
-    setIndexEditando(null);
-  };
-
-  // ✅ Función para cerrar el modal
-  const handleCloseModal = () => {
-    setProductoEditando(null);
-    setIndexEditando(null);
-  };
 
   return (
     <div className="table-responsive">
@@ -62,15 +37,9 @@ export default function InventoryTable({ inventario, onConsume, onDelete, onReab
           onChange={(e) => setCategoriaFiltro(e.target.value)}
         >
           {categorias.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
+            <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
-
-        <button className="btn btn-success" onClick={exportarExcel}>
-          📊 Exportar a Excel
-        </button>
       </div>
 
       <table className="table table-striped table-bordered align-middle">
@@ -84,63 +53,28 @@ export default function InventoryTable({ inventario, onConsume, onDelete, onReab
         </thead>
         <tbody>
           {inventarioFiltrado.length > 0 ? (
-            inventarioFiltrado.map((producto, index) => (
-              <tr
-                key={index}
-                className={producto.cantidad === 0 ? "table-danger fw-bold" : ""}
-              >
+            inventarioFiltrado.map((producto) => (
+              <tr key={producto.id} className={producto.cantidad === 0 ? "table-danger fw-bold" : ""}>
                 <td>{producto.nombre}</td>
                 <td>{producto.cantidad}</td>
                 <td>{producto.categoria}</td>
                 <td>
-                  <div className="d-flex gap-2 justify-content-center flex-wrap">
-                    <button
-                      className="btn btn-sm btn-warning"
-                      onClick={() => onConsume(index)}
-                    >
-                      Consumir
-                    </button>
-                    <button
-                      className="btn btn-sm btn-success"
-                      onClick={() => onReabastecer(index)}
-                    >
-                      +1
-                    </button>
-                    {/* ✅ Botón de Editar */}
-                    <button
-                      className="btn btn-sm btn-primary"
-                      onClick={() => handleEditClick(producto, index)}
-                    >
-                      ✏️ Editar
-                    </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => onDelete(index)}
-                    >
-                      Eliminar
-                    </button>
+                  <div className="d-flex gap-2 flex-wrap justify-content-center">
+                    <button className="btn btn-sm btn-warning" onClick={() => onConsume(producto.id)}>Consumir</button>
+                    <button className="btn btn-sm btn-success" onClick={() => onReabastecer(producto.id)}>+1</button>
+                    <button className="btn btn-sm btn-danger" onClick={() => onDelete(producto.id)}>Eliminar</button>
+                    {onEdit && <button className="btn btn-sm btn-primary" onClick={() => onEdit(producto.id, producto)}>Editar</button>}
                   </div>
                 </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="4" className="text-center">
-                No hay productos que coincidan con la búsqueda o categoría seleccionada.
-              </td>
+              <td colSpan="4" className="text-center">No hay productos que coincidan con la búsqueda o categoría seleccionada.</td>
             </tr>
           )}
         </tbody>
       </table>
-
-      {/* ✅ Modal de edición */}
-      {productoEditando && (
-        <EditProductModal
-          producto={productoEditando}
-          onSave={handleSaveEdit}
-          onClose={handleCloseModal}
-        />
-      )}
     </div>
   );
 }

@@ -1,31 +1,38 @@
-class AuthService {
-  constructor() {
-    this.user = { username: "admin", password: "admin" };
-  }
+import axios from "axios";
 
-  login(username, password) {
-    if (username === this.user.username && password === this.user.password) {
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("user", JSON.stringify(this.user));
-      return true;
+const API_URL = "http://localhost:8090/auth";
+
+const AuthService = {
+  async loginUser(username, password) {
+    const response = await axios.post(`${API_URL}/login`, {
+      username,
+      password,
+    });
+
+    const token = response.data.token;
+
+    if (!token) {
+      throw new Error("La API no devolvió un token válido.");
     }
-    return false;
-  }
+
+    // Guarda el token
+    localStorage.setItem("token", token);
+
+    // Devuelve un objeto consistente
+    return { token };
+  },
 
   logout() {
-    localStorage.removeItem("user");
-    localStorage.removeItem("isLoggedIn");
-    localStorage.removeItem("currentUser");
-  }
+    localStorage.removeItem("token");
+  },
 
-  getUser() {
-    return JSON.parse(localStorage.getItem("user"));
-  }
+  getToken() {
+    return localStorage.getItem("token");
+  },
 
   isAuthenticated() {
-    // ✅ Cambiar para que busque isLoggedIn
-    return localStorage.getItem("isLoggedIn") === "true";
+    return !!localStorage.getItem("token");
   }
-}
+};
 
-export default new AuthService();
+export default AuthService;

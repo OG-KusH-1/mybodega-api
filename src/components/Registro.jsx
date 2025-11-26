@@ -19,40 +19,33 @@ export default function Register() {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
     // Validaciones
     if (formData.password !== formData.confirmarPassword) {
       setError("Las contraseñas no coinciden");
+      setLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
       setError("La contraseña debe tener al menos 6 caracteres");
+      setLoading(false);
       return;
     }
 
-    // Aquí guardarías el usuario (localStorage, API, etc.)
-    const usuarios = JSON.parse(localStorage.getItem("usuarios") || "[]");
-    
-    // Verificar si el usuario ya existe
-    if (usuarios.find(u => u.usuario === formData.usuario)) {
-      setError("El usuario ya existe");
-      return;
+    try {
+      await AuthService.registerUser(formData.usuario, formData.password);
+      alert("Usuario registrado exitosamente");
+      navigate("/login");
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
-
-    usuarios.push({
-      nombre: formData.nombre,
-      email: formData.email,
-      usuario: formData.usuario,
-      password: formData.password
-    });
-
-    localStorage.setItem("usuarios", JSON.stringify(usuarios));
-    alert("Usuario registrado exitosamente");
-    navigate("/login");
   };
 
   return (
@@ -68,24 +61,12 @@ export default function Register() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label className="form-label">Nombre completo</label>
+            <label className="form-label">Usuario</label>
             <input
               type="text"
               className="form-control"
-              name="nombre"
-              value={formData.nombre}
-              onChange={handleChange}
-              required
-            />
-          </div>
-
-          <div className="mb-3">
-            <label className="form-label">Email</label>
-            <input
-              type="email"
-              className="form-control"
-              name="email"
-              value={formData.email}
+              name="usuario"
+              value={formData.usuario}
               onChange={handleChange}
               required
             />

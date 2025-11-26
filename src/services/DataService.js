@@ -1,91 +1,104 @@
-const INVENTARIO_KEY = "inventario";
-const CONSUMIDOS_KEY = "consumidos";
-const LOGS_KEY = "logs";
+import api from './api.js';
 
 const DataService = {
-  loadInventario() {
-    return JSON.parse(localStorage.getItem(INVENTARIO_KEY)) || [];
-  },
-
-  saveInventario(inventario) {
-    localStorage.setItem(INVENTARIO_KEY, JSON.stringify(inventario));
-  },
-
-  loadConsumidos() {
-    return JSON.parse(localStorage.getItem(CONSUMIDOS_KEY)) || {};
-  },
-
-  saveConsumidos(consumidos) {
-    localStorage.setItem(CONSUMIDOS_KEY, JSON.stringify(consumidos));
-  },
-
-  addOrUpdateProduct(inventario, producto) {
-    const idx = inventario.findIndex(
-      (p) =>
-        p.nombre.toLowerCase() === producto.nombre.toLowerCase() &&
-        p.categoria === producto.categoria
-    );
-    if (idx >= 0) {
-      inventario[idx].cantidad += producto.cantidad;
-      this.addLog(`Se actualizó el producto "${producto.nombre}" (+${producto.cantidad})`);
-    } else {
-      inventario.push(producto);
-      this.addLog(`Se agregó el producto "${producto.nombre}" (${producto.categoria})`);
-    }
-    this.saveInventario(inventario);
-    return inventario;
-  },
-
-  consumeProduct(inventario, consumidos, index) {
-    const producto = inventario[index];
-    consumidos[producto.nombre] = (consumidos[producto.nombre] || 0) + 1;
-
-    if (producto.cantidad > 0) producto.cantidad--;
-
-    this.addLog(`Se consumió una unidad de "${producto.nombre}"`);
-
-    this.saveInventario(inventario);
-    this.saveConsumidos(consumidos);
-    return { inventario, consumidos };
-  },
-
-  reabastecer(inventario, index, cantidad = 1) {
-    const producto = inventario[index];
-    producto.cantidad += cantidad;
-    this.addLog(`Se reabasteció "${producto.nombre}" (+${cantidad})`);
-    this.saveInventario(inventario);
-    return inventario;
-  },
-
-  deleteProduct(inventario, index) {
-    const producto = inventario[index];
-    this.addLog(`Se eliminó el producto "${producto.nombre}"`);
-    inventario.splice(index, 1);
-    this.saveInventario(inventario);
-    return inventario;
-  },
-
-  loadLogs() {
-    return JSON.parse(localStorage.getItem(LOGS_KEY)) || [];
-  },
-
-  saveLogs(logs) {
-    localStorage.setItem(LOGS_KEY, JSON.stringify(logs));
-  },
-
-  addLog(mensaje) {
+  async loadInventario() {
     try {
-      const logs = this.loadLogs();
-      const fecha = new Date().toLocaleString();
-      logs.push(`[${fecha}] ${mensaje}`);
-      this.saveLogs(logs);
-
-      // 🔹 Notifica a los componentes que usan useEffect
-      window.dispatchEvent(new Event("storage"));
+      return await api.get('/products');
     } catch (error) {
-      console.error("Error al guardar log:", error);
+      console.error('Error loading inventory:', error);
+      return [];
     }
   },
+
+  async addOrUpdateProduct(producto) {
+    try {
+      // Check if product exists
+      const products = await this.loadInventario();
+      const existing = products.find(
+        (p) => p.nombre.toLowerCase() === producto.nombre.toLowerCase() &&
+               p.categoria === producto.categoria
+      );
+
+      if (existing) {
+        // Update existing
+        await api.put(`/products/${existing.id}`, {
+          nombre: existing.nombre,
+          categoria: existing.categoria,
+          cantidad: existing.cantidad + producto.cantidad,
+          precio: existing.precio || producto.precio || 0
+        });
+      } else {
+        // Create new
+        await api.post('/products', producto);
+      }
+      return await this.loadInventario();
+    } catch (error) {
+      console.error('Error adding/updating product:', error);
+      throw error;
+    }
+  },
+
+  async consumeProduct(index) {
+    try {
+      const products = await this.loadInventario();
+      const product = products[index];
+      const updatedProduct = {
+        nombre: product.nombre,
+        categoria: product.categoria,
+        cantidad: product.cantidad - 1
+      };
+      await api.put(`/products/${product.id}`, updatedProduct);
+      return await this.loadInventario();
+    } catch (error) {
+      console.error('Error consuming product:', error);
+      throw error;
+    }
+  },
+
+  async reabastecer(index, cantidad = 1) {
+    try {
+      const products = await this.loadInventario();
+      const product = products[index];
+      const updatedProduct = {
+        nombre: product.nombre,
+        categoria: product.categoria,
+        cantidad: product.cantidad + cantidad
+      };
+      await api.put(`/products/${product.id}`, updatedProduct);
+      return await this.loadInventario();
+    } catch (error) {
+      console.error('Error restocking product:', error);
+      throw error;
+    }
+  },
+
+  async deleteProduct(index) {
+    try {
+      const products = await this.loadInventario();
+      const product = products[index];
+      await api.delete(`/products/${product.id}`);
+      return await this.loadInventario();
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      throw error;
+    }
+  },
+
+  async loadLogs() {
+    try {
+      return await api.get('/logs');
+    } catch (error) {
+      console.error('Error loading logs:', error);
+      return [];
+    }
+  },
+
+  // Legacy methods for compatibility (if needed)
+  saveInventario() {},
+  loadConsumidos() { return {}; },
+  saveConsumidos() {},
+  saveLogs() {},
+  addLog() {},
 };
 
 export default DataService;

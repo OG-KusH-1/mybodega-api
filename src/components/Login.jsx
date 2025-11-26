@@ -1,34 +1,34 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import AuthService from "../services/AuthService";
 
 export default function Login({ onLogin }) {
   const [usuario, setUsuario] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    const usuarios = JSON.parse(localStorage.getItem("usuarios") || "[]");
-    const usuarioEncontrado = usuarios.find(
-      u => u.usuario === usuario && u.password === password
-    );
+    try {
+      const token = await AuthService.loginUser(usuario, password);
 
-    // Mantén el login de admin
-    if (usuario === "admin" && password === "admin") {
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("currentUser", "admin");
+      if (!token) {
+        setError("Token inválido.");
+        return;
+      }
+
       onLogin();
       navigate("/");
-    } else if (usuarioEncontrado) {
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("currentUser", usuarioEncontrado.nombre);
-      onLogin();
-      navigate("/");
-    } else {
-      setError("Usuario o contraseña incorrectos");
+      
+    } catch (error) {
+      setError(error.message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -36,7 +36,7 @@ export default function Login({ onLogin }) {
     <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
       <div className="card p-4 shadow" style={{ width: "22rem" }}>
         <h3 className="text-center mb-3">Iniciar sesión</h3>
-        
+
         {error && (
           <div className="alert alert-danger" role="alert">
             {error}

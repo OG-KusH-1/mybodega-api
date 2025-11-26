@@ -10,6 +10,7 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "axios": "^1.13.2",
     "bootstrap": "^5.3.2",
     "chart.js": "^4.4.0",
     "react": "^18.2.0",
@@ -37,5 +38,18 @@
     "vitest": "^3.2.4",
     "webpack": "^5.88.2",
     "webpack-cli": "^5.1.4"
-  }
+  },
+  "description": "Proyecto migrado a React + Vite. Contiene el inventario, reportes con Chart.js y persistencia en localStorage.",
+  "main": "vite.config.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OG-KusH-1/MyBodega-React.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OG-KusH-1/MyBodega-React/issues"
+  },
+  "homepage": "https://github.com/OG-KusH-1/MyBodega-React#readme"
 }

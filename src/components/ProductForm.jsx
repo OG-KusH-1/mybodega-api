@@ -5,13 +5,51 @@ function ProductForm({ onAdd }) {
   const [cantidad, setCantidad] = useState("");
   const [categoria, setCategoria] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!nombre || !cantidad || !categoria) return;
-    onAdd({ nombre, cantidad: parseInt(cantidad), categoria });
-    setNombre("");
-    setCantidad("");
-    setCategoria("");
+
+    // Obtener token
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("No hay token, inicia sesión nuevamente.");
+      return;
+    }
+
+    const nuevoProducto = {
+      nombre,
+      cantidad: parseInt(cantidad),
+      categoria
+    };
+
+    try {
+      const resp = await fetch("http://localhost:8090/api/products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(nuevoProducto)
+      });
+
+      if (!resp.ok) {
+        throw new Error("Error al agregar el producto");
+      }
+
+      const data = await resp.json();
+
+      // Avisar al padre que lo agregue a la lista
+      if (onAdd) onAdd(data);
+
+      // Limpiar formulario
+      setNombre("");
+      setCantidad("");
+      setCategoria("");
+
+    } catch (error) {
+      console.error("Error:", error);
+      alert("No se pudo agregar el producto.");
+    }
   };
 
   return (
@@ -67,4 +105,3 @@ function ProductForm({ onAdd }) {
 }
 
 export default ProductForm;
-

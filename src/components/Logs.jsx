@@ -1,30 +1,56 @@
-import { useState, useEffect } from "react";
-import DataService from "../services/DataService";
+import { useEffect, useState } from "react";
+import api from "../services/api";
 
-export default function Logs() {
-  const [logs, setLogs] = useState(DataService.loadLogs());
+function Logs() {
+  const [movements, setMovements] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get("/api/movements");
+      setMovements(res.data);
+    } catch (err) {
+      console.error("Error cargando movimientos:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    function actualizarLogs() {
-      setLogs(DataService.loadLogs());
-    }
-
-    window.addEventListener("storage", actualizarLogs);
-    return () => window.removeEventListener("storage", actualizarLogs);
+    load();
+    const interval = setInterval(load, 20_000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
-    <div className="container mt-4">
-      <h2>Historial de movimientos</h2>
-      <ul className="list-group">
-        {logs.length === 0 ? (
-          <li className="list-group-item text-muted">No hay registros</li>
-        ) : (
-          logs.map((log, i) => (
-            <li key={i} className="list-group-item">{log}</li>
-          ))
-        )}
-      </ul>
+    <div className="container">
+      <h1>📚 Movimientos</h1>
+
+      {loading ? <p>Cargando...</p> : (
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Tipo</th>
+              <th>Cantidad</th>
+              <th>Fecha</th>
+            </tr>
+          </thead>
+          <tbody>
+            {movements.map(m => (
+              <tr key={m.id}>
+                <td>{m.productName}</td>
+                <td>{m.type}</td>
+                <td>{m.quantity}</td>
+                <td>{new Date(m.date).toLocaleString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
+
+export default Logs;

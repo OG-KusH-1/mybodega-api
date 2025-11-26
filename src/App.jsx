@@ -1,115 +1,108 @@
-import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom'; // ← Solo importar estos
-import Header from './components/Header';
-import ProductForm from './components/ProductForm';
-import InventoryTable from './components/InventoryTable';
-import Reports from './components/Reports';
-import Login from './components/Login';
-import DataService from './services/DataService';
-import AuthService from './services/AuthService';
-import ShoppingList from './components/ShoppingList';
-import Logs from './components/Logs';
-import Register from './components/Registro.jsx';
+import { useState, useEffect } from "react";
+import { Routes, Route } from "react-router-dom";
+
+import Header from "./components/Header";
+import ProductForm from "./components/ProductForm";
+import InventoryTable from "./components/InventoryTable";
+import Reports from "./components/Reports";
+import Login from "./components/Login";
+import ShoppingList from "./components/ShoppingList";
+import Logs from "./components/Logs";
+import Register from "./components/Registro";
+import ProtectedRoute from "./components/ProtectedRoute";
+
+import ProductService from "./services/ProductService";
+import AuthService from "./services/AuthService";
 
 export default function App() {
-  const [inventario, setInventario] = useState(DataService.loadInventario());
-  const [consumidos, setConsumidos] = useState(DataService.loadConsumidos());
-  const [isAuthenticated, setIsAuthenticated] = useState(AuthService.isAuthenticated());
+  const [inventario, setInventario] = useState([]);
 
+  // Cargar inventario al iniciar si hay token
   useEffect(() => {
-    function onStorage() {
-      setInventario(DataService.loadInventario());
-      setConsumidos(DataService.loadConsumidos());
+    if (AuthService.isAuthenticated()) {
+      fetchInventario();
     }
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  function handleAdd(producto) {
-    const nuevo = [...inventario];
-    DataService.addOrUpdateProduct(nuevo, producto);
-    setInventario(DataService.loadInventario());
-  }
+  const fetchInventario = async () => {
+    try {
+      const data = await ProductService.getAll();
+      setInventario(data);
+    } catch (err) {
+      console.error("Error cargando inventario:", err);
+    }
+  };
 
-  function handleConsume(index) {
-    const result = DataService.consumeProduct([...inventario], {...consumidos}, index);
-    setInventario(result.inventario);
-    setConsumidos(result.consumidos);
-  }
+  const handleLogin = () => {
+    fetchInventario();
+  };
 
-  function handleReabastecer(index) {
-    DataService.reabastecer(inventario, index, 1);
-    setInventario(DataService.loadInventario());
-  }
-
-  function handleDelete(index) {
-    DataService.deleteProduct(inventario, index);
-    setInventario(DataService.loadInventario());
-  }
-
-  function handleEdit(index, datosActualizados) {
-    const nuevoInventario = [...inventario];
-    nuevoInventario[index] = datosActualizados;
-    setInventario(nuevoInventario);
-    localStorage.setItem("inventario", JSON.stringify(nuevoInventario));
-  }
-
-  function handleLogin() {
-    setIsAuthenticated(true);
-  }
-
-  function handleLogout() {
+  const handleLogout = () => {
     AuthService.logout();
-    setIsAuthenticated(false);
-  }
+    setInventario([]);
+  };
+
+  // CRUD usando IDs, asegurando que React re-renderice
+  const handleAdd = async (producto) => {
+    const res = await ProductService.create(producto);
+    setInventario(prev => [...prev, res]);
+  };
+
+  const handleEdit = async (id, datos) => {
+    const res = await ProductService.update(id, datos);
+    setInventario(prev => prev.map(p => p.id === id ? res : p));
+  };
+
+  const handleDelete = async (id) => {
+    await ProductService.delete(id);
+    setInventario(prev => prev.filter(p => p.id !== id));
+  };
+
+  const handleConsume = async (id) => {
+    const producto = inventario.find(p => p.id === id);
+    if (!producto || producto.cantidad <= 0) return;
+    handleEdit(id, { ...producto, cantidad: producto.cantidad - 1 });
+  };
+
+  const handleReabastecer = async (id) => {
+    const producto = inventario.find(p => p.id === id);
+    if (!producto) return;
+    handleEdit(id, { ...producto, cantidad: producto.cantidad + 1 });
+  };
 
   return (
-  <>
-    {isAuthenticated && <Header onLogout={handleLogout} />}
-    <Routes>
-      <Route
-        path="/"
-        element={
-          isAuthenticated ? (
+    <>
+      {AuthService.isAuthenticated() && <Header onLogout={handleLogout} />}
+
+      <Routes>
+        <Route path="/" element={
+          <ProtectedRoute>
             <div className="container">
               <div className="row">
-                <div className="col-md-4"><ProductForm onAdd={handleAdd} /></div>
+                <div className="col-md-4">
+                  <ProductForm onAdd={handleAdd} />
+                </div>
                 <div className="col-md-8">
                   <h2>Inventario</h2>
                   <InventoryTable
                     inventario={inventario}
                     onConsume={handleConsume}
-                    onDelete={handleDelete}
                     onReabastecer={handleReabastecer}
+                    onDelete={handleDelete}
                     onEdit={handleEdit}
                   />
                 </div>
               </div>
             </div>
-          ) : (
-            <Navigate to="/login" />
-          )
-        }
-      />
-      
-      <Route
-        path="/reportes"
-        element={isAuthenticated ? <Reports /> : <Navigate to="/login" />}
-      />
-      
-      <Route
-        path="/compras"
-        element={isAuthenticated ? <ShoppingList /> : <Navigate to="/login" />}
-      />
-      
-      <Route
-        path="/logs"
-        element={isAuthenticated ? <Logs /> : <Navigate to="/login" />}
-      />
-      
-      <Route path="/login" element={<Login onLogin={handleLogin} />} />
-      <Route path="/register" element={<Register />} />
-    </Routes>
-  </>
-);
+          </ProtectedRoute>
+        }/>
+
+        <Route path="/reportes" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+        <Route path="/compras" element={<ProtectedRoute><ShoppingList /></ProtectedRoute>} />
+        <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
+        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route path="/register" element={<Register />} />
+      </Routes>
+    </>
+  );
 }

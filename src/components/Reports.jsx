@@ -1,112 +1,74 @@
-import React, { useEffect, useState } from "react";
-import DataService from "../services/DataService";
-import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useEffect, useState } from "react";
+import api from "../services/api"; // ajusta ruta si tu api.js está en services/api.js
 
-export default function Reports() {
-  const [inventario, setInventario] = useState([]);
-  const [consumidos, setConsumidos] = useState({});
-  const [logs, setLogs] = useState([]);
+function Reports() {
+  const [byCategory, setByCategory] = useState([]);
+  const [lowStock, setLowStock] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const loadReports = async () => {
+    try {
+      setLoading(true);
+      const resCategory = await api.get("/api/reports/by-category");
+      const resLowStock = await api.get("/api/reports/low-stock");
+
+      setByCategory(resCategory.data); // [{category, count}, ...]
+      setLowStock(resLowStock.data); // [{id, nombre, cantidad}, ...]
+    } catch (err) {
+      console.error("Error cargando reportes:", err);
+      setError("No se pudieron cargar los reportes");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setInventario(DataService.loadInventario());
-    setConsumidos(DataService.loadConsumidos());
-    setLogs(DataService.loadLogs());
-
-    const actualizar = () => {
-      setInventario(DataService.loadInventario());
-      setConsumidos(DataService.loadConsumidos());
-      setLogs(DataService.loadLogs());
-    };
-    window.addEventListener("storage", actualizar);
-    return () => window.removeEventListener("storage", actualizar);
+    loadReports();
   }, []);
 
-  const consumidosData = Object.entries(consumidos).map(([nombre, cantidad]) => ({ nombre, cantidad }));
-  const categoriasData = Object.entries(
-    inventario.reduce((acc, p) => {
-      acc[p.categoria] = (acc[p.categoria] || 0) + p.cantidad;
-      return acc;
-    }, {})
-  ).map(([categoria, cantidad]) => ({ categoria, cantidad }));
-
-  const stockBajo = inventario.filter((p) => p.cantidad <= 2);
-
-  const COLORS = ["#8884d8", "#82ca9d", "#ffc658", "#ff7f7f", "#00bcd4"];
+  if (loading) return <p>Cargando reportes...</p>;
+  if (error) return <p style={{ color: "red" }}>{error}</p>;
 
   return (
     <div className="container">
-      <h2 className="mb-4">📊 Reportes</h2>
+      <h1>📊 Reportes</h1>
 
-      {/* Productos más consumidos */}
-      <div className="card mb-4">
-        <div className="card-header bg-dark text-white">Productos más consumidos</div>
-        <div className="card-body">
-          {consumidosData.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={consumidosData}>
-                <XAxis dataKey="nombre" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="cantidad" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <p>No hay productos consumidos aún.</p>
-          )}
-        </div>
-      </div>
+      <section>
+        <h2>Productos por Categoría</h2>
+        <table>
+          <thead>
+            <tr><th>Categoría</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            {byCategory.map((c, idx) => (
+              <tr key={idx}>
+                <td>{c.category}</td>
+                <td>{c.count}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
 
-      {/* Distribución por categoría */}
-      <div className="card mb-4">
-        <div className="card-header bg-primary text-white">Distribución por categoría</div>
-        <div className="card-body d-flex justify-content-center">
-          {categoriasData.length > 0 ? (
-            <ResponsiveContainer width="80%" height={300}>
-              <PieChart>
-                <Pie
-                  data={categoriasData}
-                  dataKey="cantidad"
-                  nameKey="categoria"
-                  outerRadius={120}
-                  label
-                >
-                  {categoriasData.map((_, index) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <p>No hay productos registrados.</p>
-          )}
-        </div>
-      </div>
-
-      {/* Stock bajo */}
-      <div className="card mb-4">
-        <div className="card-header bg-warning text-dark">Productos con bajo stock</div>
-        <div className="card-body">
-          {stockBajo.length > 0 ? (
-            <ul className="list-group">
-              {stockBajo.map((p, index) => (
-                <li
-                  key={index}
-                  className={`list-group-item d-flex justify-content-between ${
-                    p.cantidad === 0 ? "list-group-item-danger fw-bold" : ""
-                  }`}
-                >
-                  <span>{p.nombre}</span>
-                  <span>{p.cantidad} unidades</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Todos los productos tienen stock suficiente.</p>
-          )}
-        </div>
-      </div>
+      <section style={{ marginTop: 20 }}>
+        <h2>Productos con Bajo Stock (≤ 3)</h2>
+        <table>
+          <thead>
+            <tr><th>Producto</th><th>Cantidad</th></tr>
+          </thead>
+          <tbody>
+            {lowStock.map((p) => (
+              <tr key={p.id}>
+                <td>{p.nombre}</td>
+                <td style={{ color: "red" }}>{p.cantidad}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
     </div>
   );
 }
+
+export default Reports;
